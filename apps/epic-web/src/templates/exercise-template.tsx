@@ -23,7 +23,7 @@ import pluralize from 'pluralize'
 import GitHubLink from '@skillrecordings/skill-lesson/video/github-link'
 import {MDXRemoteSerializeResult} from 'next-mdx-remote'
 import {SanityProduct} from '@skillrecordings/commerce-server/dist/@types'
-import * as Collection from '@skillrecordings/ui/module/collection'
+import * as Collection from '@skillrecordings/skill-lesson/video/collection'
 import {Button, ScrollArea, ScrollBar, Skeleton} from '@skillrecordings/ui'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -49,8 +49,9 @@ const ExerciseTemplate: React.FC<{
   const {title, description: exerciseDescription} = lesson
   const ogImage = getOgImage({
     title,
+    type: 'video',
     byline: module.title,
-    image: module.image,
+    image: `${process.env.NEXT_PUBLIC_URL}/api/video-thumb?videoResourceId=${videoResourceId}`,
   })
   const {ogImage: moduleOGImage, description: moduleDescription} = module
   const pageTitle = `${title}`

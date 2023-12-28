@@ -1,7 +1,7 @@
 import {NextApiRequest, NextApiResponse} from 'next'
 import {isValidSignature, SIGNATURE_HEADER_NAME} from '@sanity/webhook'
 import * as Sentry from '@sentry/nextjs'
-import {withSentry} from '@sentry/nextjs'
+
 import {inngest} from '@/utils/inngest.server'
 
 const secret = process.env.SANITY_WEBHOOK_SECRET as string
@@ -11,7 +11,11 @@ export const sanityArticleWebhook = async (
   res: NextApiResponse,
 ) => {
   const signature = req.headers[SIGNATURE_HEADER_NAME] as string
-  const isValid = isValidSignature(JSON.stringify(req.body), signature, secret)
+  const isValid = await isValidSignature(
+    JSON.stringify(req.body),
+    signature,
+    secret,
+  )
 
   try {
     if (isValid) {
@@ -40,10 +44,4 @@ export const sanityArticleWebhook = async (
   }
 }
 
-export default withSentry(sanityArticleWebhook)
-
-export const config = {
-  api: {
-    externalResolver: true,
-  },
-}
+export default sanityArticleWebhook

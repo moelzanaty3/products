@@ -6,6 +6,8 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+const {withAxiom} = require('next-axiom')
+
 const {withSentryConfig} = require('@sentry/nextjs')
 
 const sentryWebpackPluginOptions = process.env.SENTRY_AUTH_TOKEN && {
@@ -44,9 +46,26 @@ const nextConfig = {
   async redirects() {
     return []
   },
+  sentry: {
+    hideSourceMaps: false,
+  },
+  webpack: (config, {dev, isServer, webpack, nextRuntime}) => {
+    config.module.rules.push({
+      test: /\.node$/,
+      use: [
+        {
+          loader: 'nextjs-node-loader',
+          options: {
+            outputPath: config.output.path,
+          },
+        },
+      ],
+    })
+    return config
+  },
 }
 
-const configWithPlugins = withMDX(nextConfig)
+const configWithPlugins = withAxiom(withMDX(nextConfig))
 
 if (sentryWebpackPluginOptions) {
   module.exports = withSentryConfig(

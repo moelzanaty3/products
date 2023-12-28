@@ -1,8 +1,9 @@
 import {PrismaClient} from '@prisma/client'
+import {Decimal} from '@prisma/client/runtime/library'
 
 export * from '@prisma/client'
 
-export {Decimal} from '@prisma/client/runtime'
+export type {Decimal}
 
 let prisma: PrismaClient
 

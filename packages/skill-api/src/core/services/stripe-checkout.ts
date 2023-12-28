@@ -139,7 +139,7 @@ const buildCouponName = (
     couponName = buildCouponNameWithProductName(
       'Upgrade from ',
       upgradeFromPurchase.product.name,
-      ` + PPP ${stripeCouponPercentOff * 100}% off`,
+      ` + PPP ${Math.floor(stripeCouponPercentOff * 100)}% off`,
     )
   } else if (
     availableUpgrade &&
@@ -230,8 +230,15 @@ export async function stripeCheckout({
         include: {
           prices: true,
           merchantProducts: {
+            where: {
+              status: 1,
+            },
             include: {
-              merchantPrices: true,
+              merchantPrices: {
+                where: {
+                  status: 1,
+                },
+              },
             },
           },
         },

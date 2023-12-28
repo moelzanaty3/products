@@ -16,18 +16,40 @@ import {claimedSeats} from './core/services/claimed-seats'
 import {updateName} from './core/services/update-name'
 import {transferPurchase} from './core/services/transfer-purchase'
 import {stripeRefund} from './core/services/process-refund'
+import {processSanityWebhooks} from './core/services/process-sanity-webhooks'
+
+export type SkillRecordingsAction =
+  | 'send-feedback'
+  | 'test'
+  | 'prices'
+  | 'checkout'
+  | 'webhook'
+  | 'redeem'
+  | 'subscriber'
+  | 'answer'
+  | 'subscribe'
+  | 'lookup'
+  | 'sign-s3'
+  | 'claimed'
+  | 'transfer'
+  | 'nameUpdate'
+  | 'refund'
+
+export type SkillRecordingsProvider = 'stripe' | 'sanity'
 
 export async function actionRouter({
   method,
   req,
   action,
+  providerId,
   params,
   userOptions,
   token,
 }: {
   method: string
   req: IncomingRequest
-  action: any
+  action: SkillRecordingsAction
+  providerId?: SkillRecordingsProvider
   params: any
   userOptions: any
   token: any
@@ -55,6 +77,12 @@ export async function actionRouter({
       case 'checkout':
         return stripeCheckout({params})
       case 'webhook':
+        switch (providerId) {
+          case 'stripe':
+            return await processStripeWebhooks({params})
+          case 'sanity':
+            return await processSanityWebhooks({params})
+        }
         return await processStripeWebhooks({params})
       case 'subscribe':
         return await subscribeToConvertkit({params})

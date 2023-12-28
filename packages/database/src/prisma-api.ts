@@ -347,6 +347,18 @@ export function getSdk(
       })
       return progresses
     },
+    async getLessonProgressCountsByDate() {
+      type ProgressCount = {
+        count: number
+        completedAt: string
+      }
+
+      const progressCountsByDate = await ctx.prisma.$queryRaw<
+        ProgressCount[]
+      >`select count(*) as count, completedAt from LessonProgress where completedAt > (now() - interval 60 day) group by completedAt order by completedAt asc;`
+
+      return progressCountsByDate
+    },
     async getPurchaseWithUser(purchaseId: string) {
       return await ctx.prisma.purchase.findFirst({
         where: {
@@ -687,6 +699,14 @@ export function getSdk(
       const product = await ctx.prisma.product.findFirst(options)
       return product
     },
+    async updateOrCreateProduct(options: Prisma.ProductUpsertArgs) {
+      const product = await ctx.prisma.product.upsert(options)
+      return product
+    },
+    async deleteProduct(options: Prisma.ProductDeleteArgs) {
+      const product = await ctx.prisma.product.delete(options)
+      return product
+    },
     async getPrice(options: Prisma.PriceFindFirstArgs) {
       const price = await ctx.prisma.price.findFirst(options)
       return price
@@ -714,11 +734,21 @@ export function getSdk(
           expires: {
             gte: new Date(),
           },
-          ...(productIds && {
-            restrictedToProductId: {
-              in: productIds,
+          // we either want:
+          // 1) a coupon restricted to one of the given product IDs
+          // 2) a coupon that isn't restricted to a product ID
+          OR: [
+            {
+              ...(productIds && {
+                restrictedToProductId: {
+                  in: productIds,
+                },
+              }),
             },
-          }),
+            {
+              restrictedToProductId: null,
+            },
+          ],
         },
         orderBy: {
           percentageDiscount: 'desc',

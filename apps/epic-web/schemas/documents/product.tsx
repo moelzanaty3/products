@@ -12,15 +12,26 @@ export default defineType({
       type: 'string',
     }),
     defineField({
-      name: 'productId',
-      title: 'Product ID',
-      type: 'string',
+      name: 'unitAmount',
+      title: 'Unit Amount',
+      description: 'Current Price',
+      type: 'number',
+      validation: (Rule) => Rule.min(1).required(),
     }),
-    {
-      name: 'convertkitPurchasedTagId',
-      title: 'Convertkit Purchase Tag ID',
+    defineField({
+      name: 'quantityAvailable',
+      title: 'Quantity Available',
+      description: 'Set to -1 for unlimited',
+      type: 'number',
+      initialValue: -1,
+      validation: (Rule) => Rule.min(-1).required(),
+    }),
+    defineField({
+      name: 'productId',
+      title: 'Skill Product ID',
       type: 'string',
-    },
+      readOnly: true,
+    }),
     defineField({
       name: 'slug',
       title: 'Slug',
@@ -44,6 +55,17 @@ export default defineType({
           {title: 'unavailable', value: 'unavailable'},
         ],
       },
+    }),
+    defineField({
+      name: 'upgradableTo',
+      title: 'Upgradable To',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'reference',
+          to: [{type: 'product'}],
+        }),
+      ],
     }),
     defineField({
       name: 'body',

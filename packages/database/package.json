@@ -1,11 +1,13 @@
 {
   "name": "@skillrecordings/database",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist/**"
+    "dist/**",
+    "prisma/**",
+    "src/**"
   ],
   "scripts": {
     "prebuild": "pnpm run generate",
@@ -20,7 +22,8 @@
     "validate": "DATABASE_URL=\"mysql://root@127.0.0.1:3306/turborepo\" npx prisma validate"
   },
   "dependencies": {
-    "@prisma/client": "^4.5.0",
+    "@prisma/client": "5.0.0",
+    "decimal.js": "^10.4.3",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

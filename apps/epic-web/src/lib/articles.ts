@@ -1,6 +1,7 @@
 import {sanityClient} from '../utils/sanity-client'
 import groq from 'groq'
 import z from 'zod'
+// import * as Sentry from '@sentry/nextjs'
 
 export const ArticleSchema = z.object({
   _id: z.string(),
@@ -12,6 +13,15 @@ export const ArticleSchema = z.object({
   description: z.nullable(z.string()).optional(),
   body: z.string(),
   state: z.enum(['published', 'draft']),
+  author: z
+    .object({
+      name: z.string(),
+      slug: z.string(),
+      image: z.string(),
+      imageAlt: z.string(),
+    })
+    .nullable()
+    .optional(),
   image: z
     .object({
       width: z.number(),
@@ -49,6 +59,12 @@ export const getAllArticles = async (): Promise<Article[]> => {
         body,
         image,
         ogImage,
+        author-> {
+          name,
+          "slug": slug.current,
+          "image": picture.asset->url,
+          "imageAlt": picture.alt
+        },
         resources[]->{
           ...
         }
@@ -57,7 +73,7 @@ export const getAllArticles = async (): Promise<Article[]> => {
   return ArticlesSchema.parse(articles)
 }
 
-export const getArticle = async (slug: string): Promise<Article> => {
+export const getArticle = async (slug: string): Promise<Article | null> => {
   const article = await sanityClient.fetch(
     groq`*[_type == "article" && slug.current == $slug][0] {
         _id,
@@ -71,6 +87,12 @@ export const getArticle = async (slug: string): Promise<Article> => {
         body,
         image,
         ogImage,
+        author-> {
+          name,
+          "slug": slug.current,
+          "image": picture.asset->url,
+          "imageAlt": picture.alt
+        },
         resources[]->{
           ...
         }
@@ -78,5 +100,12 @@ export const getArticle = async (slug: string): Promise<Article> => {
     {slug: `${slug}`},
   )
 
-  return ArticleSchema.parse(article)
+  const result = ArticleSchema.safeParse(article)
+
+  if (result.success) {
+    return result.data
+  } else {
+    // Sentry.captureMessage(`Unable to find Sanity Article with slug '${slug}'`)
+    return null
+  }
 }

@@ -1,4 +1,3 @@
-import {type PurchaseInfo} from '@skillrecordings/commerce-server'
 export const STRIPE_CHECKOUT_COMPLETED_EVENT =
   'stripe/checkout.session.completed'
 

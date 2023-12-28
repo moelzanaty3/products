@@ -13,14 +13,11 @@ import SaleCountdown from './sale-countdown'
 import Spinner from '../spinner'
 import Image from 'next/legacy/image'
 import find from 'lodash/find'
-import {Decimal, type Purchase} from '@skillrecordings/database'
+import {type Decimal} from '@skillrecordings/database'
 import ReactMarkdown from 'react-markdown'
 import {isSellingLive} from '../utils/is-selling-live'
 import {MailIcon} from '@heroicons/react/solid'
-import {
-  redirectUrlBuilder,
-  SubscribeToConvertkitForm,
-} from '@skillrecordings/convertkit-react-ui'
+import {redirectUrlBuilder, SubscribeToConvertkitForm} from '../convertkit'
 import {useConvertkit} from '../hooks/use-convertkit'
 import {setUserId} from '@amplitude/analytics-browser'
 import {track} from '../utils/analytics'
@@ -52,7 +49,6 @@ const getNumericValue = (
 type PricingProps = {
   product: SanityProduct
   purchased?: boolean
-  purchases?: Purchase[]
   userId?: string
   index?: number
   couponId?: string
@@ -70,6 +66,11 @@ type PricingProps = {
     image?: string
     expiresAt?: string
   }[]
+  purchaseButtonRenderer?: (
+    formattedPrice: any,
+    product: SanityProduct,
+    status: QueryStatus,
+  ) => React.ReactNode
   options?: {
     withImage?: boolean
     withGuaranteeBadge?: boolean
@@ -77,13 +78,13 @@ type PricingProps = {
     teamQuantityLimit?: number
     saleCountdownRenderer?: ({coupon}: {coupon: any}) => React.ReactNode
   }
+  id?: string
 }
 
 /**
  * Pricing component for the product.
  * @param product
  * @param purchased
- * @param purchases
  * @param userId - If user is logged in, this is the user's ID.
  * @param index
  * @param couponId
@@ -94,7 +95,6 @@ type PricingProps = {
 export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
   product,
   purchased = false,
-  purchases = [],
   userId,
   index = 0,
   bonuses,
@@ -103,26 +103,44 @@ export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
   allowPurchase: generallyAllowPurchase = false,
   canViewRegionRestriction = false,
   cancelUrl,
+  id = 'main-pricing',
+  purchaseButtonRenderer = (formattedPrice, product, status) => {
+    return (
+      <button
+        data-pricing-product-checkout-button=""
+        type="submit"
+        disabled={status === 'loading' || status === 'error'}
+      >
+        <span>
+          {formattedPrice?.upgradeFromPurchaseId
+            ? `Upgrade Now`
+            : product?.action || `Buy Now`}
+        </span>
+      </button>
+    )
+  },
   options = {
     withImage: true,
     isPPPEnabled: false,
     withGuaranteeBadge: true,
     saleCountdownRenderer: () => null,
+    teamQuantityLimit: 100,
   },
 }) => {
+  const {withImage, isPPPEnabled, withGuaranteeBadge, teamQuantityLimit} =
+    options
   const {
-    withImage,
-    isPPPEnabled,
-    withGuaranteeBadge,
-    teamQuantityLimit = 100,
-  } = options
-  const [quantity, setQuantity] = React.useState(1)
+    addPrice,
+    isDowngrade,
+    merchantCoupon,
+    setMerchantCoupon,
+    quantity,
+    setQuantity,
+  } = usePriceCheck()
   const [isBuyingForTeam, setIsBuyingForTeam] = React.useState(false)
   const debouncedQuantity: number = useDebounce<number>(quantity, 250)
   const {productId, name, image, modules, features, lessons, action, title} =
     product
-  const {addPrice, isDowngrade, merchantCoupon, setMerchantCoupon} =
-    usePriceCheck()
   const {subscriber, loadingSubscriber} = useConvertkit()
   const router = useRouter()
   const [autoApplyPPP, setAutoApplyPPP] = React.useState<boolean>(true)
@@ -228,7 +246,7 @@ export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
   }, [])
 
   return (
-    <div id="main-pricing">
+    <div id={id}>
       <div data-pricing-product={index}>
         {withImage && image && (
           <div data-pricing-product-image="">
@@ -416,7 +434,8 @@ export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
                               setQuantity(
                                 quantity < 1
                                   ? 1
-                                  : quantity > teamQuantityLimit
+                                  : teamQuantityLimit &&
+                                    quantity > teamQuantityLimit
                                   ? teamQuantityLimit
                                   : quantity,
                               )
@@ -446,17 +465,8 @@ export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
                         </div>
                       </div>
                     )}
-                    <button
-                      data-pricing-product-checkout-button=""
-                      type="submit"
-                      disabled={status === 'loading' || status === 'error'}
-                    >
-                      <span>
-                        {formattedPrice?.upgradeFromPurchaseId
-                          ? `Upgrade Now`
-                          : action || `Buy Now`}
-                      </span>
-                    </button>
+
+                    {purchaseButtonRenderer(formattedPrice, product, status)}
                     {withGuaranteeBadge && (
                       <span data-guarantee="">30-Day Money-Back Guarantee</span>
                     )}
@@ -578,32 +588,37 @@ export const Pricing: React.FC<React.PropsWithChildren<PricingProps>> = ({
                     }}
                   />
                 )}
-              {moduleBonuses && !Boolean(merchantCoupon) && (
-                <div data-bonuses="">
-                  <ul role="list">
-                    {moduleBonuses.map((module) => {
-                      return purchased ? (
-                        <li key={module.slug}>
-                          <Link
-                            href={{
-                              pathname: `/bonuses/[slug]`,
-                              query: {
-                                slug: module.slug,
-                              },
-                            }}
-                          >
-                            <WorkshopListItem module={module} />
-                          </Link>
-                        </li>
-                      ) : (
-                        <li key={module.slug}>
-                          <WorkshopListItem module={module} key={module.slug} />
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              )}
+              {moduleBonuses &&
+                moduleBonuses.length > 0 &&
+                !Boolean(merchantCoupon) && (
+                  <div data-bonuses="">
+                    <ul role="list">
+                      {moduleBonuses.map((module) => {
+                        return purchased ? (
+                          <li key={module.slug}>
+                            <Link
+                              href={{
+                                pathname: `/bonuses/[slug]`,
+                                query: {
+                                  slug: module.slug,
+                                },
+                              }}
+                            >
+                              <WorkshopListItem module={module} />
+                            </Link>
+                          </li>
+                        ) : (
+                          <li key={module.slug}>
+                            <WorkshopListItem
+                              module={module}
+                              key={module.slug}
+                            />
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
               {workshops && (
                 <div data-workshops="">
                   <strong>Workshops</strong>
